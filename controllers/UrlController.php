@@ -6,6 +6,7 @@ namespace app\controllers;
 use app\models\Url;
 use app\models\UrlForm;
 use yii\data\ActiveDataProvider;
+use yii\db\Exception;
 use yii\web\Controller;
 
 class UrlController extends Controller
@@ -13,6 +14,20 @@ class UrlController extends Controller
     public function actionIndex()
     {
         $formModel = new UrlForm();
+
+        if (\Yii::$app->request->isAjax) {
+            if ($formModel->load(\Yii::$app->request->post()) && $formModel->validate()) {
+                // Split string to array by line endings
+                $urls = explode('\n', str_replace("\r", "", $formModel->urls));
+
+                // Visit all URLs and write result to table
+                $this->processingUrls($urls);
+
+                return true;
+            }
+
+            throw new \Exception('Error form validation');
+        }
 
         // Get all data from table 'url'
         $urls = Url::find();
@@ -24,16 +39,6 @@ class UrlController extends Controller
             ]
         ]);
 
-        if (\Yii::$app->request->isPost) {
-            sleep(10);
-            var_dump(\Yii::$app->request->post());
-
-            return $this->renderAjax(
-                'index',
-                compact('formModel', 'urlProvider')
-            );
-        }
-
         return $this->render(
             'index',
             compact('formModel', 'urlProvider')
@@ -42,15 +47,19 @@ class UrlController extends Controller
 
     public function actionAdd()
     {
-        if (\Yii::$app->request->isPost) {
-            var_dump(\Yii::$app->request->post());
+
+    }
+
+    public function actionTest($url)
+    {
+        Url::getTitleByUrl($url);
+    }
+
+    private function processingUrls(array $urls)
+    {
+        foreach ($urls as $url) {
+            $row = new Url();
+            $row->title = Url::getTitleByUrl($url);
         }
-
-        if (\Yii::$app->request->isPjax) {
-
-        }
-
-        return $this->renderAjax('index');
-//        throw new \Exception('This page only for PJAX requests.');
     }
 }

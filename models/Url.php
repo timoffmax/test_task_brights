@@ -2,6 +2,7 @@
 
 namespace app\models;
 
+use DOMDocument;
 use Yii;
 
 /**
@@ -48,5 +49,32 @@ class Url extends \yii\db\ActiveRecord
             'status_code' => 'Status Code',
             'processed' => 'Processed',
         ];
+    }
+
+
+    /**
+     * Parsing HTML document and returning page title
+     *
+     * @param string $url
+     * @return string
+     */
+    public static function getTitleByUrl(string $url) : string
+    {
+        try {
+            // Get page
+            $htmlPage = file_get_contents($url);
+
+            // Parsing HTML document
+            $htmlDocument = new DOMDocument();
+            @$htmlDocument->loadHTML($htmlPage);
+            $nodes = $htmlDocument->getElementsByTagName('title');
+
+            //get and display what you need:
+            $title = $nodes->item(0)->nodeValue;
+        } catch (\Exception $e) {
+            $title = '';
+        }
+
+        return $title ?? '';
     }
 }

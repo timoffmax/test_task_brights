@@ -10,18 +10,37 @@ use yii\widgets\Pjax;
 $this->title = 'URLs';
 
 $js = <<<JS
-    $("document").ready(function(){
-        $("#pjax-url-form").on("pjax:start", function() {
-            $(this).find('button[type=submit]').prop('disabled', true);
-            alert('Test');
+    $("document").ready(function() {
+        $("#url-form").on("submit", function() {
+            // Set vars
+            var button = $(this).find('button[type=submit]');
+            
+            // Disable submit button
+            button.prop('disabled', true);
+            
+            // AJAX query
+            $.ajax({
+                type: "POST",
+                url: $(this).attr('action'),
+                data: $(this).serialize(),
+                success: function(data) {
+                    // var response = parseJSON(data);
+                    console.log(data);
+
+                    // Enable button again
+                    button.prop('disabled', false);
+                }
+            });
+            return false;
+            
         });
-        
-        $("#pjax-url-form").on("pjax:end", function() {
+
+        $("#pjax-url-form").on("pjax:success", function() {
             $.pjax.reload({container:"#pjax-urls"});
         });
     });
 JS;
-$this->registerJs($js);
+$this->registerJs($js, \yii\web\View::POS_END);
 ?>
 
 <!--Form for adding new URLs-->
@@ -30,14 +49,11 @@ $this->registerJs($js);
         <h2>Add new URLs</h2>
     </div>
     <div class="row">
-        <?php Pjax::begin(['id' => 'pjax-url-form']); ?>
         <?php
             $form = ActiveForm::begin([
                 'id' => 'url-form',
-//                'action' => 'url/add',
                 'options' => [
                     'class' => 'form-horizontal',
-                    'data-pjax' => true,
                 ],
             ]);
         ?>
@@ -49,7 +65,6 @@ $this->registerJs($js);
         </div>
 
         <?php ActiveForm::end(); ?>
-        <?php Pjax::end(); ?>
     </div>
 </div>
 
@@ -59,7 +74,13 @@ $this->registerJs($js);
         <h2>Checked URLs</h2>
     </div>
     <div class="row">
-        <?php Pjax::begin(['id' => 'pjax-urls']); ?>
+        <?php
+            Pjax::begin([
+                'id' => 'pjax-urls',
+                'enablePushState' => false,
+                'timeout' => '5000',
+            ]);
+        ?>
         <?=
             GridView::widget([
                 'dataProvider' => $urlProvider,

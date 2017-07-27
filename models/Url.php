@@ -12,7 +12,7 @@ use Yii;
  * @property string $url
  * @property string $title
  * @property integer $status_code
- * @property integer $processed
+ * @property  $check_time
  */
 class Url extends \yii\db\ActiveRecord
 {
@@ -31,9 +31,11 @@ class Url extends \yii\db\ActiveRecord
     {
         return [
             [['url'], 'required'],
-            [['status_code', 'processed'], 'integer'],
+            [['status_code'], 'integer'],
             [['url'], 'string', 'max' => 250],
+            [['url'], 'url'],
             [['title'], 'string', 'max' => 150],
+            [['check_time'], 'date' ,'format' => 'php:U'],
         ];
     }
 
@@ -47,19 +49,20 @@ class Url extends \yii\db\ActiveRecord
             'url' => 'Url',
             'title' => 'Title',
             'status_code' => 'Status Code',
-            'processed' => 'Processed',
+            'check_time' => 'Check Time',
         ];
     }
 
 
     /**
-     * Parsing HTML document and returning page title
+     * Parsing HTML document and returning page title and status code
      *
      * @param string $url
-     * @return string
+     * @return array
      */
-    public static function getTitleByUrl(string $url) : string
+    public static function getUrlInfo(string $url) : array
     {
+        /*
         try {
             // Get page
             $htmlPage = file_get_contents($url);
@@ -74,7 +77,26 @@ class Url extends \yii\db\ActiveRecord
         } catch (\Exception $e) {
             $title = '';
         }
+        */
 
-        return $title ?? '';
+        // Create cURL resource, get HTML document
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        $htmlPage = curl_exec($ch);
+
+        // Parsing HTML document
+        $htmlDocument = new DOMDocument();
+        @$htmlDocument->loadHTML($htmlPage);
+        $nodes = $htmlDocument->getElementsByTagName('title');
+
+        // Get title
+        $title = $nodes->item(0)->nodeValue ?? '';
+
+        // Get status code
+        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE) ?? 0;
+
+        return compact('title', 'statusCode');
     }
 }

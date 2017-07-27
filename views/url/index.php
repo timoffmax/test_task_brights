@@ -11,33 +11,55 @@ $this->title = 'URLs';
 
 $js = <<<JS
     $("document").ready(function() {
-        $("#url-form").on("submit", function() {
-            // Set vars
-            var button = $(this).find('button[type=submit]');
-            
+        var form = $("#url-form");
+        var button = form.find('button');
+        var ajaxLoader = $("#ajax-loader-div");
+        var table = $("#urls-table");
+        
+        button.on("click", function(event) {
             // Disable submit button
             button.prop('disabled', true);
+            
+            // Show ajax-loader
+            ajaxLoader.removeClass('hidden');
+            table.addClass('hidden');
             
             // AJAX query
             $.ajax({
                 type: "POST",
-                url: $(this).attr('action'),
-                data: $(this).serialize(),
+                url: form.attr('action'),
+                data: form.serialize(),
                 success: function(data) {
-                    // var response = parseJSON(data);
-                    console.log(data);
-
                     // Enable button again
                     button.prop('disabled', false);
+                    
+                    // Clear form
+                    form.find("textarea").val("");
+                    
+                    // Reload list of URLs
+                    $.pjax.reload({container:"#pjax-urls"});
+                    
+                    // Hide ajax-loader
+                    ajaxLoader.addClass('hidden');
+                    table.removeClass('hidden');
+                },
+                error: function(data) {
+                    // Hide ajax-loader
+                    ajaxLoader.addClass('hidden');
+                    table.removeClass('hidden');
+                    
+                    // Enable button again                    
+                    button.prop('disabled', false);
+                    alert('URLs adding error!');                                     
                 }
             });
-            return false;
             
+            // Prevent default action
+            event.preventDefault();
+            return false;
         });
-
-        $("#pjax-url-form").on("pjax:success", function() {
-            $.pjax.reload({container:"#pjax-urls"});
-        });
+        
+        
     });
 JS;
 $this->registerJs($js, \yii\web\View::POS_END);
@@ -52,6 +74,8 @@ $this->registerJs($js, \yii\web\View::POS_END);
         <?php
             $form = ActiveForm::begin([
                 'id' => 'url-form',
+                'enableAjaxValidation' => true,
+                'validationUrl' => 'form-validate',
                 'options' => [
                     'class' => 'form-horizontal',
                 ],
@@ -61,8 +85,10 @@ $this->registerJs($js, \yii\web\View::POS_END);
         <?= $form->field($formModel, 'urls')->textarea()->label(false) ?>
 
         <div class="form-group">
-            <?= Html::submitButton('Check URLs', ['class' => 'btn btn-success']) ?>
+            <?= Html::button('Check URLs', ['class' => 'btn btn-success']) ?>
         </div>
+
+        <?= $form->errorSummary($formModel) ?>
 
         <?php ActiveForm::end(); ?>
     </div>
@@ -81,13 +107,21 @@ $this->registerJs($js, \yii\web\View::POS_END);
                 'timeout' => '5000',
             ]);
         ?>
+
+        <!--Image for display while data loading-->
+        <div class="col-md-12 center-clock text-center hidden" id="ajax-loader-div">
+            <?= Html::img('@web/images/ajax-loader.gif') ?>
+        </div>
+
         <?=
             GridView::widget([
                 'dataProvider' => $urlProvider,
+                'id' => 'urls-table',
                 'columns' => [
                     'url',
                     'status_code',
                     'title',
+                    'check_time'
                 ]
             ])
         ?>

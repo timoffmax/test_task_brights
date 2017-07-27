@@ -7,6 +7,7 @@ use app\models\Url;
 use app\models\UrlForm;
 use yii\bootstrap\ActiveForm;
 use yii\data\ActiveDataProvider;
+use yii\helpers\ArrayHelper;
 use yii\web\Controller;
 use yii\web\Response;
 
@@ -56,6 +57,30 @@ class UrlController extends Controller
         return $this->render(
             'index',
             compact('formModel', 'urlProvider')
+        );
+    }
+
+    public function actionStatistics()
+    {
+        // Get counts of URL checks by date and status code
+        $statistics = Url::find()
+            ->select([
+                'COUNT(*) as checks',
+                'DATE_FORMAT(check_time, "%d-%m-%Y") as date',
+                'status_code',
+            ])
+            ->groupBy(['DATE_FORMAT(check_time, "%d-%m-%Y")', 'status_code'])
+            ->asArray()
+            ->all();
+
+        $dates = array_keys(ArrayHelper::index($statistics, 'status_code', 'date'));
+
+        $statistics = ArrayHelper::index($statistics, 'date', 'status_code');
+        $datasets = Url::prepareDatasetsForChart($statistics, $dates);
+
+        return $this->render(
+            'statistics',
+            compact('dates', 'datasets')
         );
     }
 
